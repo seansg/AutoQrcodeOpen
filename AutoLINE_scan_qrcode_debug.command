@@ -16,7 +16,7 @@ try:
     import Quartz
     import cv2
     import numpy as np
-    from pyzbar.pyzbar import decode
+    from pyzbar.pyzbar import decode, ZBarSymbol
 except ImportError as e:
     print(f"📦 正在安裝必要套件... (錯誤: {e})")
     subprocess.check_call(
@@ -36,7 +36,7 @@ except ImportError as e:
         import Quartz
         import cv2
         import numpy as np
-        from pyzbar.pyzbar import decode
+        from pyzbar.pyzbar import decode, ZBarSymbol
         print("✅ 模組載入成功!")
     except ImportError as e2:
         print(f"❌ 模組載入失敗: {e2}")
@@ -129,7 +129,7 @@ def start_monitor():
                 # 轉為 OpenCV 格式 (BGRA -> BGR)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
 
-                decoded_objs = decode(frame)
+                decoded_objs = decode(frame, symbols=[ZBarSymbol.QRCODE])
                 print(f"🔎 偵測到 {len(decoded_objs)} 個 QR codes")
                 
                 for obj in decoded_objs:

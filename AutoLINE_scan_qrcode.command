@@ -17,7 +17,7 @@ try:
     import Quartz
     import cv2
     import numpy as np
-    from pyzbar.pyzbar import decode
+    from pyzbar.pyzbar import decode, ZBarSymbol
 except ImportError as e:
     print(f"📦 正在安裝必要套件... (錯誤: {e})")
     subprocess.check_call(
@@ -37,7 +37,7 @@ except ImportError as e:
         import Quartz
         import cv2
         import numpy as np
-        from pyzbar.pyzbar import decode
+        from pyzbar.pyzbar import decode, ZBarSymbol
         print("✅ 模組載入成功!")
     except ImportError as e2:
         print(f"❌ 模組載入失敗: {e2}")
@@ -88,7 +88,7 @@ def detect_qrcodes(frame, save_debug=False):
     all_urls = set()
     
     # 先嘗試原始彩色影像
-    decoded_objs = decode(frame)
+    decoded_objs = decode(frame, symbols=[ZBarSymbol.QRCODE])
     if decoded_objs:
         print(f"   ✅ 原始影像偵測到 {len(decoded_objs)} 個 QR codes")
         for obj in decoded_objs:
@@ -97,7 +97,7 @@ def detect_qrcodes(frame, save_debug=False):
     # 嘗試前處理後的影像
     processed_frames = preprocess_image(frame)
     for i, processed in enumerate(processed_frames):
-        decoded_objs = decode(processed)
+        decoded_objs = decode(processed, symbols=[ZBarSymbol.QRCODE])
         if decoded_objs:
             print(f"   ✅ 前處理方法 {i+1} 偵測到 {len(decoded_objs)} 個 QR codes")
             for obj in decoded_objs:
