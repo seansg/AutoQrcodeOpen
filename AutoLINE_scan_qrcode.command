@@ -13,7 +13,7 @@ import glob
 from datetime import datetime
 
 # 修正 zbar 系統路徑
-os.environ["DYLD_LIBRARY_PATH"] = "/opt/homebrew/lib:" + os.environ.get(
+os.environ["DYLD_LIBRARY_PATH"] = "/opt/homebrew/opt/zbar/lib:" + os.environ.get(
     "DYLD_LIBRARY_PATH", ""
 )
 
