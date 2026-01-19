@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Version: 2.4
+# Version: 2.5
 
 import os
 import sys
@@ -30,6 +30,12 @@ parser.add_argument(
     type=int,
     default=0,
     help="保留最近 N 個日誌檔案 (預設: 0 = 保留全部)",
+)
+parser.add_argument(
+    "--run-duration",
+    type=int,
+    default=0,
+    help="執行 N 秒後自動結束 (預設: 0 = 永不結束)",
 )
 args = parser.parse_args()
 
@@ -254,17 +260,20 @@ def start_monitor():
     previous_urls = set()
     processed_urls = set()
     logger.info("\n" + "=" * 50)
-    logger.info("🚀 LINE QR Code 自動偵測監控已啟動 (v2.4)")
+    logger.info("🚀 LINE QR Code 自動偵測監控已啟動 (v2.5)")
     logger.info(f"� 日誌檔案: {log_file}")
     logger.info("�📍 已自動處理 Retina 螢幕解析度")
     logger.info("🔧 使用多種影像前處理方法提高辨識率")
     logger.info("⚡ 每 0.5 秒檢查一次,快速反應")
+    if args.run_duration > 0:
+        logger.info(f"⏱️  設定運行時間限制: {args.run_duration} 秒")
     logger.info("⏱️  截圖超時設定: 3 秒")
     logger.info("⚠️  注意:LINE 視窗需在前台才能更新聊天內容")
     logger.info("=" * 50 + "\n")
 
     check_count = 0
-    last_status_time = time.time()
+    start_time = time.time()
+    last_status_time = start_time
     save_debug_next = True  # 第一次儲存調試影像
     consecutive_failures = 0  # 連續失敗次數
 
@@ -306,6 +315,15 @@ def start_monitor():
                 # 只在第一次失敗時記錄,避免日誌過多
                 if consecutive_failures == 1:
                     logger.debug("未找到 LINE 視窗或截圖失敗")
+
+            # 檢查運行時間
+            if args.run_duration > 0:
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= args.run_duration:
+                    logger.info(
+                        f"🛑 已達到運行時間限制 ({args.run_duration} 秒),準備重啟..."
+                    )
+                    break
 
             time.sleep(0.5)
     except KeyboardInterrupt:

@@ -6,8 +6,10 @@ PYTHON_SCRIPT="$SCRIPT_DIR/AutoLINE_scan_qrcode.command"
 PID_FILE="$SCRIPT_DIR/qrcode_monitor.pid"
 
 # 解析參數
+# 解析參數
 CLEAN_LOGS=""
 KEEP_LOGS=""
+RESTART_INTERVAL=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -19,18 +21,24 @@ while [[ $# -gt 0 ]]; do
             KEEP_LOGS="--keep-logs $2"
             shift 2
             ;;
+        --restart-interval)
+            RESTART_INTERVAL="$2"
+            shift 2
+            ;;
         -h|--help)
             echo "使用方式: $0 [選項]"
             echo ""
             echo "選項:"
             echo "  --clean-logs           啟動時清除所有舊日誌檔案"
             echo "  --keep-logs N          啟動時保留最近 N 個日誌檔案,刪除其他"
+            echo "  --restart-interval N   每 N 秒自動重啟一次 (例如: 3600 = 1 小時)"
             echo "  -h, --help             顯示此說明訊息"
             echo ""
             echo "範例:"
             echo "  $0                     # 不清除日誌"
             echo "  $0 --clean-logs        # 清除所有舊日誌"
             echo "  $0 --clean-logs --keep-logs 5  # 只保留最近 5 個日誌"
+            echo "  $0 --restart-interval 3600     # 每小時重啟一次"
             exit 0
             ;;
         *)
@@ -63,10 +71,23 @@ if [ -f "$PID_FILE" ]; then
     fi
 fi
 
-# 在背景執行 Python 腳本
-echo "🚀 啟動 LINE QR Code 監控..."
-nohup python3 "$PYTHON_SCRIPT" $CLEAN_LOGS $KEEP_LOGS > /dev/null 2>&1 &
-NEW_PID=$!
+# 在背景執行
+if [ -n "$RESTART_INTERVAL" ]; then
+    echo "🚀 啟動 LINE QR Code 監控 (自動重啟模式, 每 ${RESTART_INTERVAL} 秒)..."
+    # 使用迴圈進行自動重啟
+    nohup bash -c "while true; do \
+        echo '🔄 啟動監控程序...'; \
+        python3 \"$PYTHON_SCRIPT\" $CLEAN_LOGS $KEEP_LOGS --run-duration $RESTART_INTERVAL; \
+        echo '⏳ 等待 1 秒後重啟...'; \
+        sleep 1; \
+    done" > /dev/null 2>&1 &
+    NEW_PID=$!
+    echo "Note: PID $NEW_PID 是監控迴圈的 PID"
+else
+    echo "🚀 啟動 LINE QR Code 監控..."
+    nohup python3 "$PYTHON_SCRIPT" $CLEAN_LOGS $KEEP_LOGS > /dev/null 2>&1 &
+    NEW_PID=$!
+fi
 
 # 儲存 PID
 echo $NEW_PID > "$PID_FILE"

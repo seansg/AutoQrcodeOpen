@@ -1,4 +1,4 @@
-# LINE QR Code 自動偵測監控 v2.4
+# LINE QR Code 自動偵測監控 v2.5
 
 自動偵測 LINE 視窗中的 QR code 並開啟連結。
 
@@ -26,6 +26,7 @@ python3 AutoLINE_scan_qrcode.command
 ### 2. 背景執行模式
 
 #### 基本啟動 (自動清除舊日誌)
+
 ```bash
 ./start_monitor_background.sh
 ```
@@ -33,11 +34,21 @@ python3 AutoLINE_scan_qrcode.command
 **注意:** 如果監控程式已在運行,會自動停止舊程序並重新啟動。
 
 #### 保留最近 5 個日誌
+
 ```bash
 ./start_monitor_background.sh --keep-logs 5
 ```
 
+#### 每小時自動重啟
+
+```bash
+./start_monitor_background.sh --restart-interval 3600
+```
+
+> 適期重啟可釋放記憶體並確保長期運行的穩定性
+
 #### 查看說明
+
 ```bash
 ./start_monitor_background.sh --help
 ```
@@ -45,21 +56,25 @@ python3 AutoLINE_scan_qrcode.command
 ### 3. 管理背景程序
 
 #### 檢查監控狀態
+
 ```bash
 ./check_status.sh
 ```
 
 顯示資訊:
+
 - 監控程式是否正在運行
 - 程序 PID 和運行時間
 - 最新的日誌檔案
 
 #### 查看即時日誌
+
 ```bash
 ./view_logs.sh
 ```
 
 #### 停止監控
+
 ```bash
 ./stop_monitor.sh
 ```
@@ -113,6 +128,7 @@ python3 AutoLINE_scan_qrcode.command --keep-logs 3
 ### 必要套件
 
 腳本會自動安裝以下套件:
+
 - opencv-python
 - pyzbar
 - pyobjc-framework-Quartz

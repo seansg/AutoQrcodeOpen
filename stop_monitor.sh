@@ -13,12 +13,18 @@ PID=$(cat "$PID_FILE")
 
 if ps -p "$PID" > /dev/null 2>&1; then
     echo "🛑 停止監控程式 (PID: $PID)..."
+    
+    # 嘗試停止子程序 (如果有的話,例如在自動重啟模式下)
+    pkill -P "$PID" 2>/dev/null
+    
+    # 停止主程序
     kill "$PID"
     sleep 1
     
     # 確認是否已停止
     if ps -p "$PID" > /dev/null 2>&1; then
         echo "⚠️  程式未正常停止,強制終止..."
+        pkill -9 -P "$PID" 2>/dev/null
         kill -9 "$PID"
     fi
     
