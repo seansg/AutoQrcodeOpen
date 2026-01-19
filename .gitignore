@@ -1,2 +1,4 @@
 .DS_Store
 debug_screenshots/
+logs/
+*.log
