@@ -44,6 +44,16 @@ python3 AutoLINE_scan_qrcode.command
 
 ### 3. 管理背景程序
 
+#### 檢查監控狀態
+```bash
+./check_status.sh
+```
+
+顯示資訊:
+- 監控程式是否正在運行
+- 程序 PID 和運行時間
+- 最新的日誌檔案
+
 #### 查看即時日誌
 ```bash
 ./view_logs.sh
@@ -124,6 +134,7 @@ brew install zbar
 
 - `AutoLINE_scan_qrcode.command` - 主程式
 - `start_monitor_background.sh` - 背景啟動腳本
+- `check_status.sh` - 檢查監控狀態腳本
 - `stop_monitor.sh` - 停止監控腳本
 - `view_logs.sh` - 查看日誌腳本
 - `logs/` - 日誌檔案目錄
