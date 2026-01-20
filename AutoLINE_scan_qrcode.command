@@ -223,24 +223,16 @@ def preprocess_image(frame):
     # 轉為灰階
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
-    # 放大影像以提高小 QR code 的辨識率
-    # 使用 2x 和 3x 放大
+    # 只使用 2x 放大（3x 太慢）
     upscaled_2x = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-    upscaled_3x = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
 
-    # 嘗試多種前處理方法
+    # 精簡處理方法，只保留最有效的
     processed_frames = [
         gray,  # 原始灰階
         upscaled_2x,  # 2倍放大
-        upscaled_3x,  # 3倍放大
-        cv2.GaussianBlur(gray, (5, 5), 0),  # 高斯模糊
-        cv2.GaussianBlur(upscaled_2x, (5, 5), 0),  # 放大後高斯模糊
-        cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-        ),  # 自適應二值化
         cv2.adaptiveThreshold(
             upscaled_2x, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-        ),  # 放大後自適應二值化
+        ),  # 放大後自適應二值化（最有效）
     ]
 
     return processed_frames
@@ -256,6 +248,8 @@ def detect_qrcodes(frame, save_debug=False):
         logger.info(f"   ✅ 原始影像偵測到 {len(decoded_objs)} 個 QR codes")
         for obj in decoded_objs:
             all_urls.add(obj.data.decode("utf-8"))
+        # 如果原始影像就偵測到了，直接返回（早期退出優化）
+        return all_urls
 
     # 嘗試前處理後的影像
     processed_frames = preprocess_image(frame)
@@ -267,6 +261,8 @@ def detect_qrcodes(frame, save_debug=False):
             )
             for obj in decoded_objs:
                 all_urls.add(obj.data.decode("utf-8"))
+            # 找到 QR code 後立即返回（早期退出優化）
+            return all_urls
 
     # 儲存調試影像
     if save_debug and len(all_urls) == 0:
