@@ -140,63 +140,80 @@ def get_line_window_image():
         options = Quartz.kCGWindowListOptionAll
         window_list = Quartz.CGWindowListCopyWindowInfo(options, Quartz.kCGNullWindowID)
 
+        # 收集所有符合條件的 LINE 視窗
+        line_windows = []
         for window in window_list:
             owner = window.get("kCGWindowOwnerName", "")
             if "LINE" in owner:
                 window_id = window.get("kCGWindowNumber", 0)
                 bounds = window.get("kCGWindowBounds", {})
+                
+                # 過濾掉太小的視窗（可能是通知或小工具）
                 if bounds.get("Width", 0) > 300:
-                    # 使用 screencapture 命令替代 CGWindowListCreateImage
-                    import tempfile
+                    line_windows.append({
+                        "id": window_id,
+                        "bounds": bounds,
+                        "name": window.get("kCGWindowName", "")
+                    })
+        
+        # 如果沒有找到 LINE 視窗
+        if not line_windows:
+            return None
+        
+        # 掃描所有 LINE 視窗，返回包含所有視窗截圖的列表
+        all_frames = []
+        for window_info in line_windows:
+            window_id = window_info["id"]
+            
+            logger.debug(f"掃描 LINE 視窗: ID={window_id}, Name={window_info['name']}")
 
-                    with tempfile.NamedTemporaryFile(
-                        suffix=".png", delete=False
-                    ) as tmp:
-                        tmp_path = tmp.name
+            # 使用 screencapture 命令替代 CGWindowListCreateImage
+            import tempfile
 
-                    try:
-                        # 使用 screencapture 截取指定視窗,設定 3 秒超時
-                        result = subprocess.run(
-                            [
-                                "screencapture",
-                                "-l",
-                                str(window_id),
-                                "-o",
-                                "-x",
-                                tmp_path,
-                            ],
-                            timeout=3,
-                            capture_output=True,
-                            text=True,
-                        )
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                tmp_path = tmp.name
 
-                        if result.returncode == 0 and os.path.exists(tmp_path):
-                            # 讀取截圖
-                            import cv2
+            try:
+                # 使用 screencapture 截取指定視窗,設定 3 秒超時
+                result = subprocess.run(
+                    [
+                        "screencapture",
+                        "-l",
+                        str(window_id),
+                        "-o",
+                        "-x",
+                        tmp_path,
+                    ],
+                    timeout=3,
+                    capture_output=True,
+                    text=True,
+                )
 
-                            frame = cv2.imread(tmp_path)
-                            os.unlink(tmp_path)  # 刪除臨時檔案
+                if result.returncode == 0 and os.path.exists(tmp_path):
+                    # 讀取截圖
+                    import cv2
 
-                            if frame is not None:
-                                # 轉換為 CGImage 格式以保持相容性
-                                # 實際上我們可以直接返回 cv2 影像
-                                return frame
-                        else:
-                            logger.warning(f"screencapture 失敗: {result.stderr}")
-                            if os.path.exists(tmp_path):
-                                os.unlink(tmp_path)
-                    except subprocess.TimeoutExpired:
-                        logger.warning("screencapture 超時 (3秒)")
-                        if os.path.exists(tmp_path):
-                            os.unlink(tmp_path)
-                    except Exception as e:
-                        logger.error(f"截圖錯誤: {e}")
-                        if os.path.exists(tmp_path):
-                            os.unlink(tmp_path)
+                    frame = cv2.imread(tmp_path)
+                    os.unlink(tmp_path)  # 刪除臨時檔案
 
-                    return None
+                    if frame is not None:
+                        all_frames.append(frame)
+                else:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
+            except subprocess.TimeoutExpired:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+            except Exception as e:
+                logger.error(f"截圖錯誤: {e}")
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+        
+        # 返回所有截圖的列表，如果有的話
+        return all_frames if all_frames else None
+
     except Exception as e:
-        logger.error(f"取得視窗資訊錯誤: {e}")
+        logger.error(f"取得視窗列表失敗: {e}")
 
     return None
 
@@ -205,14 +222,25 @@ def preprocess_image(frame):
     """影像前處理以提高 QR code 辨識率"""
     # 轉為灰階
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    # 放大影像以提高小 QR code 的辨識率
+    # 使用 2x 和 3x 放大
+    upscaled_2x = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+    upscaled_3x = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
 
     # 嘗試多種前處理方法
     processed_frames = [
         gray,  # 原始灰階
+        upscaled_2x,  # 2倍放大
+        upscaled_3x,  # 3倍放大
         cv2.GaussianBlur(gray, (5, 5), 0),  # 高斯模糊
+        cv2.GaussianBlur(upscaled_2x, (5, 5), 0),  # 放大後高斯模糊
         cv2.adaptiveThreshold(
             gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
         ),  # 自適應二值化
+        cv2.adaptiveThreshold(
+            upscaled_2x, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+        ),  # 放大後自適應二值化
     ]
 
     return processed_frames
@@ -291,14 +319,17 @@ def start_monitor():
                     logger.warning(f"⚠️  連續 {consecutive_failures} 次無法截取視窗")
                 last_status_time = current_time
 
-            cg_image = get_line_window_image()
-            if cg_image is not None:
+            frames = get_line_window_image()
+            if frames is not None:
                 consecutive_failures = 0  # 重置失敗計數
-                # screencapture 直接返回 cv2 影像,不需要轉換
-                frame = cg_image
-
-                # 使用增強的 QR code 偵測
-                current_urls = detect_qrcodes(frame, save_debug=save_debug_next)
+                
+                # 處理所有視窗的截圖
+                current_urls = set()
+                for frame in frames:
+                    # 使用增強的 QR code 偵測
+                    urls = detect_qrcodes(frame, save_debug=save_debug_next)
+                    current_urls.update(urls)
+                    
                 save_debug_next = False  # 只儲存第一次的調試影像
 
                 # 找出新出現且從未處理過的 QR codes
@@ -306,7 +337,14 @@ def start_monitor():
                 for url in new_urls:
                     logger.info(f"🎯 偵測到新連結: {url}")
                     os.system('say "Detected"')
-                    webbrowser.open(url)
+                    # 使用 Zen Browser 開啟連結
+                    try:
+                        subprocess.run(['open', '-a', 'Zen', url], check=True)
+                        logger.info(f"✅ 已在 Zen Browser 開啟: {url}")
+                    except subprocess.CalledProcessError:
+                        # 如果 Zen Browser 無法開啟，使用系統預設瀏覽器
+                        logger.warning("⚠️  Zen Browser 無法開啟，使用系統預設瀏覽器")
+                        webbrowser.open(url)
                     processed_urls.add(url)
 
                 previous_urls = current_urls
