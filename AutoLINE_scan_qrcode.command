@@ -372,4 +372,36 @@ def start_monitor():
 
 
 if __name__ == "__main__":
-    start_monitor()
+    # 自動重啟模式：每 30 分鐘重啟一次
+    RESTART_INTERVAL = 1800  # 30 分鐘 = 1800 秒
+    
+    # 如果沒有指定 run-duration，則使用自動重啟模式
+    if args.run_duration == 0:
+        logger.info("🔄 啟用自動重啟模式：每 30 分鐘重啟一次")
+        restart_count = 0
+        
+        while True:
+            restart_count += 1
+            logger.info(f"\n{'='*50}")
+            logger.info(f"🔄 第 {restart_count} 次啟動")
+            logger.info(f"{'='*50}\n")
+            
+            # 設定本次運行時間為 30 分鐘
+            args.run_duration = RESTART_INTERVAL
+            
+            try:
+                start_monitor()
+            except Exception as e:
+                logger.error(f"❌ 監控過程發生錯誤: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+            
+            # 重啟前等待 2 秒
+            logger.info("⏳ 2 秒後重啟...")
+            time.sleep(2)
+            
+            # 重置 run_duration 以便下次循環
+            args.run_duration = 0
+    else:
+        # 使用者指定了 run-duration，只執行一次
+        start_monitor()
