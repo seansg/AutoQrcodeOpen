@@ -386,6 +386,14 @@ if __name__ == "__main__":
             logger.info(f"🔄 第 {restart_count} 次啟動")
             logger.info(f"{'='*50}\n")
             
+            # 發送啟動通知
+            notification_title = "LINE QR Code 監控"
+            notification_message = f"監控已啟動"
+            subprocess.run([
+                'osascript', '-e',
+                f'display notification "{notification_message}" with title "{notification_title}"'
+            ], capture_output=True)
+            
             # 設定本次運行時間為 30 分鐘
             args.run_duration = RESTART_INTERVAL
             
@@ -395,6 +403,14 @@ if __name__ == "__main__":
                 logger.error(f"❌ 監控過程發生錯誤: {e}")
                 import traceback
                 logger.error(traceback.format_exc())
+            
+            # 發送系統通知
+            notification_title = "LINE QR Code 監控"
+            notification_message = f"重啟..."
+            subprocess.run([
+                'osascript', '-e',
+                f'display notification "{notification_message}" with title "{notification_title}"'
+            ], capture_output=True)
             
             # 重啟前等待 2 秒
             logger.info("⏳ 2 秒後重啟...")
