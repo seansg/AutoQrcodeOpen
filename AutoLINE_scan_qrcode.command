@@ -332,7 +332,15 @@ def start_monitor():
                 new_urls = current_urls - processed_urls
                 for url in new_urls:
                     logger.info(f"🎯 偵測到新連結: {url}")
-                    os.system('say "Detected"')
+                    
+                    # 發送系統通知
+                    notification_title = "LINE QR Code 監控"
+                    notification_message = f"偵測到 QR Code"
+                    subprocess.run([
+                        'osascript', '-e',
+                        f'display notification "{notification_message}" with title "{notification_title}"'
+                    ], capture_output=True)
+                    
                     # 使用 Zen Browser 開啟連結
                     try:
                         subprocess.run(['open', '-a', 'Zen', url], check=True)
